@@ -1,0 +1,162 @@
+---
+title: "Lab 3"
+author: "Emma Longo"
+format:
+  html: 
+    embed-resources: true
+---
+
+## Question 1
+
+```{r}
+
+met <- read.csv("~/Desktop/MPH/PM-566-Labs/met_all.gz") 
+
+library(magrittr)
+library(leaflet)
+library(devtools)
+library(lubridate)
+library(data.table)
+library(dplyr)
+```
+
+## Question 2
+
+How many columns and rows are there?
+
+There are 2377343 rows and 30 columns.
+
+```{r}
+
+dim(met)
+
+head(met)
+
+tail(met)
+```
+
+## Question 3
+
+```{r}
+
+str(met)
+```
+
+## Question 4
+
+At what elevation is the highest weather station?
+
+After replacing elevations with 9999 as N/A, the highest weather station is 4113.
+
+```{r}
+
+table(met$year)
+
+table(met$day)
+
+table(met$hour)
+
+summary(met$temp)
+
+summary(met$elev)
+
+summary(met$wind.sp)
+
+met[met$elev==9999.0, ] <- NA
+summary(met$elev)
+
+met <- met[met$temp>-40, ]
+met2 <- met[order(met$temp), ]
+head(met2)
+```
+
+## Question 5
+
+Summarize that we removed temperatures colder than -15C. The new dataset has minimum temp -3C which is reasonable.
+
+After removing temperatures less than -15C, the highest temperature was -3C.
+
+```{r}
+
+met <- met[met$temp>-15,]
+met2 <- met[order(met$temp),]
+head(met2)
+```
+
+## Question 6
+
+```{r}
+
+elev <- met[met$elev==max(met$elev, na.rm=TRUE), ]
+summary(elev)
+
+cor(elev$temp, elev$wind.sp, use="complete")
+
+cor(elev$temp, elev$hour, use="complete")
+
+cor(elev$wind.sp, elev$day, use="complete")
+
+cor(elev$wind.sp, elev$hour, use="complete")
+
+cor(elev$temp, elev$day, use="complete")
+```
+
+## Question 7
+
+Summarize any trends that you see in these time series plots.
+
+The time series plot of temperature shows cyclic variation that may represent daily fluctuations in temperature from day to night. The time series plot of wind shows less variability in the earlier half of the month and more variability in the later half of the month.
+
+```{r}
+
+hist(met$elev, breaks=100)
+
+hist(met$temp)
+
+hist(met$wind.sp)
+
+leaflet(elev) %>%
+  addProviderTiles('OpenStreetMap') %>% 
+  addCircles(lat=~lat,lng=~lon, opacity=1, fillOpacity=1, radius=100)
+
+library(lubridate)
+elev$date <- with(elev, ymd_h(paste(year, month, day, hour, sep= ' ')))
+summary(elev$date)
+
+elev <- elev[order(elev$date), ]
+head(elev)
+
+plot(elev$date, elev$temp, type='l')
+
+plot(elev$date, elev$wind.sp, type='l')
+
+```
+
+## Question 8
+
+For questions about variables in the dataset or relationships between them, try making some more exploratory plots. Do you see the patterns you would expect? There are many different types of summaries and visualization strategies that we have not discussed, but which could provide interesting perspectives on the data.
+
+Question: What is the relationship between temperature and elevation?
+
+According to the scatterplot with a simple linear regression line, there seems to be a negative relationship between elevation and temperature. In other words, as elevation increases, temperature decreases.
+
+```{r}
+
+met_daily <- met %>% 
+  group_by(USAFID, day) %>%
+  summarize(temp = mean(temp), elev = mean(elev)) %>%
+  arrange(desc(temp))
+
+hist(met_daily$elev)
+
+hist(met_daily$temp)
+
+boxplot(met_daily$elev)
+
+boxplot(met_daily$temp)
+
+plot(met_daily$elev, met_daily$temp, pch=19, cex=0.5)
+
+mod <- lm(temp ~ elev, data = met_daily)
+abline(mod, lwd=2, col="red")
+```
